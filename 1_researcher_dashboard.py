@@ -63,126 +63,136 @@ def setup_page():
         st.session_state.current_step = 1
         st.rerun()
 
-
-# 记录步骤页面
+# 在session_state中添加统一的数据结构
+if 'step_records' not in st.session_state:
+    st.session_state.step_records = {}
+    
 def record_step():
     current_step = st.session_state.current_step
     current_system = get_current_system()
     target_label, target_ids = STEP_TARGETS.get(current_step, ("N/A", []))
-
-    # 初始化状态结构
-    if 'step_start_times' not in st.session_state:
-        st.session_state.step_start_times = {}
-    if 'hit_times' not in st.session_state:
-        st.session_state.hit_times = {}
-    if 'step_durations' not in st.session_state:
-        st.session_state.step_durations = {}
-    if 'answer_attempts' not in st.session_state:
-        st.session_state.answer_attempts = {}
-
+    
+    # 初始化当前步骤的记录
+    if current_step not in st.session_state.step_records:
+        st.session_state.step_records[current_step] = {
+            'start_time': None,
+            'attempts': [],  # 存储每次尝试 {timestamp, answer, is_correct}
+            'first_correct_time': None,
+            'final_correct_time': None
+        }
+    
+    record = st.session_state.step_records[current_step]
+    
     st.header(f"步骤 {current_step}/9")
     st.subheader(f"当前系统: {current_system}")
     st.markdown(f"**🎯 目标构件：{target_label}**")
-
+    
     # 步骤开始按钮
-    if current_step not in st.session_state.step_start_times:
+    if not record['start_time']:
         if st.button("▶️ 开始本步骤任务（点击后开始计时）"):
-            st.session_state.step_start_times[current_step] = datetime.now(pytz.timezone("America/Edmonton")).isoformat()
+            record['start_time'] = datetime.now(pytz.timezone("America/Edmonton")).isoformat()
             st.rerun()
         st.stop()
-
-    # 回答表单
-    with st.form("step_form", clear_on_submit=False):
+    
+    # 处理用户输入
+    with st.form("step_form", clear_on_submit=True):
         answer = st.text_input("受试者回答编号或名称（多个用空格分隔）")
-        answer_list = [s.strip() for s in answer.split() if s.strip()]
-        error_count = st.number_input("错误次数", 0, 10)
         note = st.text_area("📝 观察备注（可选）", placeholder="在此记录你观察到的行为、操作习惯、问题等...")
-
-        # 仅用来判断首次命中
-        is_first_hit = "是"
-        if len(answer_list) > 0 and any(ans in target_ids for ans in answer_list):
-            if error_count > 0:
-                is_first_hit = "否"
-        else:
-            is_first_hit = "否"
-
-        st.radio("首次命中（由系统自动判断）", ["是", "否"], index=0 if is_first_hit == "是" else 1, disabled=True)
-
-        st.markdown(f"📊 当前尝试次数：`{st.session_state.answer_attempts.get(current_step, 0)}` 次")
-
-        col1, col2, col3 = st.columns([1, 2, 1])
-        submit_btn = col2.form_submit_button("✅ 回答正确，提交本步骤")
-        back_btn = col1.form_submit_button("⬅️ 上一页")
-
-        # 提交处理
-        if submit_btn:
+        
+        submitted = st.form_submit_button("提交尝试")
+        
+        if submitted and answer:
             now = datetime.now(pytz.timezone("America/Edmonton"))
             timestamp = now.isoformat()
-
-            # 计数 +1
-            if current_step not in st.session_state.answer_attempts:
-                st.session_state.answer_attempts[current_step] = 1
+            
+            # 检查答案是否正确
+            answer_list = [s.strip() for s in answer.split() if s.strip()]
+            is_correct = any(ans in target_ids for ans in answer_list)
+            
+            # 记录尝试
+            attempt = {
+                'timestamp': timestamp,
+                'answer': answer,
+                'is_correct': is_correct
+            }
+            record['attempts'].append(attempt)
+            
+            # 如果是首次正确
+            if is_correct and not record['first_correct_time']:
+                record['first_correct_time'] = timestamp
+            
+            # 如果是最终正确（用户确认）
+            if is_correct:
+                record['final_correct_time'] = timestamp
+                st.success("✅ 回答正确！")
             else:
-                st.session_state.answer_attempts[current_step] += 1
-
-            # 计算耗时
-            start_time_str = st.session_state.step_start_times.get(current_step)
-            elapsed = None
-            if start_time_str:
-                start_time = datetime.fromisoformat(start_time_str)
-                elapsed = round((now - start_time).total_seconds(), 2)
-
-            # 记录
-            st.session_state.hit_times[current_step] = timestamp
-            st.session_state.step_durations[current_step] = elapsed
-
-            record = {
+                st.error("❌ 回答错误，请继续尝试")
+    
+    # 显示当前状态
+    start_time = datetime.fromisoformat(record['start_time'])
+    elapsed = round((datetime.now(pytz.timezone("America/Edmonton")) - start_time).total_seconds(), 1)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.info(f"🕒 本步骤已用时: {elapsed}秒")
+        st.info(f"📊 尝试次数: {len(record['attempts'])}")
+    
+    with col2:
+        if record['final_correct_time']:
+            st.success(f"🏁 最终确认时间: {record['final_correct_time']}")
+    
+    # 计算错误次数
+    error_count = sum(1 for a in record['attempts'] if not a['is_correct'])
+    
+    # 完成步骤按钮（仅在用户有正确尝试时可用）
+    if record['final_correct_time']:
+        if st.button("✅ 完成本步骤"):
+            # 计算总耗时
+            start_time = datetime.fromisoformat(record['start_time'])
+            final_correct_time = datetime.fromisoformat(record['final_correct_time'])
+            total_duration = round((final_correct_time - start_time).total_seconds(), 2)
+            
+            # 计算错误次数
+            error_count = sum(1 for a in record['attempts'] if not a['is_correct'])
+            
+            # 保存实验记录
+            step_data = {
+                "RecordType": "Experiment",  # 明确标记为实验数据
                 "Participant": st.session_state.participant_id,
                 "StepID": current_step,
                 "System": current_system,
                 "TargetLabel": target_label,
-                "Answer": answer,
-                "FirstHit": is_first_hit,
-                "Errors": error_count,
-                "Timestamp": timestamp,
-                "StepStartTime": start_time_str,
-                "CorrectAnswerTimestamp": timestamp,
-                "TaskDurationSeconds": elapsed,
-                "AnswerAttemptCount": st.session_state.answer_attempts[current_step],
+                "StartTime": record['start_time'],
+                "EndTime": record['final_correct_time'],
+                "TotalDuration": total_duration,
+                "AttemptCount": len(record['attempts']),
+                "ErrorCount": error_count,
                 "Note": note
             }
-
-            # 更新或新增该步骤记录
-            existing_steps = [r["StepID"] for r in st.session_state.data]
-            if current_step in existing_steps:
-                st.session_state.data = [
-                    r if r["StepID"] != current_step else record
-                    for r in st.session_state.data
-                ]
-            else:
-                st.session_state.data.append(record)
-
-            # 进入问卷或下一步
+            
+            st.session_state.data.append(step_data)
+            
+            # 进入下一步或问卷
             if current_step % 3 == 0:
                 st.session_state.show_questionnaire = True
             else:
                 st.session_state.current_step += 1
             st.rerun()
-
-        if back_btn and current_step > 1:
-            st.session_state.current_step -= 1
-            st.rerun()
-
-    # 实时提示耗时 & 命中时间
-    if current_step in st.session_state.step_start_times:
-        start_time_str = st.session_state.step_start_times[current_step]
-        start_time = datetime.fromisoformat(start_time_str)
-        elapsed = round((datetime.now(pytz.timezone("America/Edmonton")) - start_time).total_seconds(), 1)
-        st.info(f"🕒 本步骤已用时：{elapsed} 秒")
-
-    if current_step in st.session_state.hit_times:
-        st.success(f"✅ 命中时间：{st.session_state.hit_times[current_step]}")
-        st.info(f"⏱️ 本步骤总耗时：{st.session_state.step_durations[current_step]} 秒")
+    
+    # 导航按钮
+    col1, col2 = st.columns(2)
+    if col1.button("⬅️ 返回上一步") and current_step > 1:
+        st.session_state.current_step -= 1
+        st.rerun()
+    
+    if col2.button("↩️ 重置本步骤"):
+        st.session_state.step_records[current_step] = {
+            'start_time': record['start_time'],  # 保留开始时间
+            'attempts': [],
+            'first_correct_time': None,
+            'final_correct_time': None
+        }
+        st.rerun()
 
 
 
@@ -250,22 +260,28 @@ def questionnaire():
             st.rerun()
 
         if submit:
-            """if submit:
-                if any(v is None for v in list(sart.values()) + list(su.values()) + list(tlx.values())):
-                    st.error("⚠️ 请完整填写所有问题再提交！")
-                    st.stop()"""
-
+            # 验证问卷完整性
+            missing = [k for k, v in {**sart, **su, **tlx}.items() if v is None]
+            if missing:
+                st.error(f"⚠️ 请完整填写所有问题再提交！缺失项: {len(missing)}")
+                st.stop()
+            
+            # 创建问卷记录
             result = {
+                "RecordType": "Questionnaire",  # 明确标记为问卷数据
                 "Participant": st.session_state.participant_id,
-                "StepID": f"Q_{current_system}",
                 "System": current_system
             }
+            
+            # 添加问卷答案
             result.update({k: parse(v) for k, v in sart.items()})
             result.update({k: parse(v) for k, v in su.items()})
             result.update({k: parse(v) for k, v in tlx.items()})
+            
             st.session_state.data.append(result)
             st.session_state.show_questionnaire = False
             st.session_state.current_step += 1
+            
             if st.session_state.current_step > 9:
                 st.session_state.experiment_complete = True
             st.rerun()
@@ -282,17 +298,31 @@ else:
 
     df = pd.DataFrame(st.session_state.data)
 
-    # 分离问卷数据和实验过程数据
-    questionnaire_df = df[df['StepID'].astype(str).str.startswith("Q_")]
-    experiment_df = df[~df['StepID'].astype(str).str.startswith("Q_")]
+    # 分离实验数据和问卷数据
+    experiment_data = [r for r in st.session_state.data if r.get("RecordType") == "Experiment"]
+    questionnaire_data = [r for r in st.session_state.data if r.get("RecordType") == "Questionnaire"]
+
+    # 创建独立的数据框
+    experiment_df = pd.DataFrame(experiment_data)
+    questionnaire_df = pd.DataFrame(questionnaire_data)
 
     # 创建内存中的 zip 文件
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         # 添加实验数据 CSV
-        zip_file.writestr("experiment_data.csv", experiment_df.to_csv(index=False))
+        if not experiment_df.empty:
+            zip_file.writestr("experiment_data.csv", experiment_df.to_csv(index=False))
+        
         # 添加问卷数据 CSV
-        zip_file.writestr("questionnaire_data.csv", questionnaire_df.to_csv(index=False))
+        if not questionnaire_df.empty:
+            # 清理问卷数据，只保留必要列
+            questionnaire_clean = questionnaire_df[[
+                "Participant", "System",
+                *[col for col in questionnaire_df.columns if col.startswith("SART_")],
+                *[col for col in questionnaire_df.columns if col.startswith("SU_")],
+                *[col for col in questionnaire_df.columns if col.startswith("TLX_")]
+            ]]
+            zip_file.writestr("questionnaire_data.csv", questionnaire_clean.to_csv(index=False))
 
     # 准备 Streamlit 下载按钮
     st.markdown("### 📦 下载所有数据 ZIP 文件")
