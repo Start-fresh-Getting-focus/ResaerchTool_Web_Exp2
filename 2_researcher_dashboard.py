@@ -254,7 +254,7 @@ def questionnaire():
     system = get_system_for_group(participant_id, group)
     
     st.header(f"{system} System Questionnaire")
-    with st.form("questionnaire_form"):
+    with st.form(key=f"questionnaire_form_step_{current_step}"):
 
         likert_labels = ["1 (Strongly Disagree)", "2", "3", "4", "5", "6", "7 (Strongly Agree)"]
         
@@ -265,128 +265,141 @@ def questionnaire():
             st.markdown(f"<div style='margin-bottom: 16px;'>{chinese}</div>", unsafe_allow_html=True)
             return st.radio("", likert_labels, horizontal=True, index=None, key=question_key)
         
-        # SART 问卷
-        st.markdown("### 🧠 SART – Situation Awareness")
-        st.markdown(f"""
-        **System being evaluated: `{system}`**
+        with st.expander("🧠 SART – Situation Awareness", expanded=True):
+            # SART 问卷
+            st.markdown("### 🧠 SART – Situation Awareness")
+            st.markdown(f"""
+            **System being evaluated: `{system}`**
 
-        Please evaluate this system (the one you just used in the last round of tasks) based on your experience in completing the component search tasks.  
-        Use a 7-point scale: 1 = Strongly disagree, 7 = Strongly agree.
+            Please evaluate this system (the one you just used in the last round of tasks) based on your experience in completing the component search tasks.  
+            Use a 7-point scale: 1 = Strongly disagree, 7 = Strongly agree.
 
-        请根据您刚刚完成的构件查找任务，评价“该系统”（当前轮次所使用的系统）的表现。  
-        每个问题请根据您的实际体验程度，选择 1 到 7 分（1 = 非常不同意，7 = 非常同意）。
+            请根据您刚刚完成的构件查找任务，评价“该系统”（当前轮次所使用的系统）的表现。  
+            每个问题请根据您的实际体验程度，选择 1 到 7 分（1 = 非常不同意，7 = 非常同意）。
 
-        """)
-        sart_questions = [
-            ("SART_1", 
-             "I received enough information to help me quickly identify the target component.", 
-             "我获得了足够的信息来帮助我快速查找到目标构件。"),
-            ("SART_2", 
-             "The information provided by the system was clear and accurate.", 
-             "系统提供的信息清晰、准确，有助于我识别正确的构件。"),
-            ("SART_3", 
-             "I clearly understood what was happening during the component search tasks.", 
-             "我能清楚理解查找任务中的提示与状态信息。"),
-            ("SART_4", 
-             "The task environment and recognition process were complex.", 
-             "任务环境和识别过程较为复杂。"),
-            ("SART_5", 
-             "The task environment and information changed unexpectedly or frequently during the task.", 
-             "任务环境和出现的信息变化频繁或难以预料。"),
-            ("SART_6", 
-             "The system behavior or visual information was inconsistent or unpredictable during the task.", 
-             "任务中系统行为或视觉提示不一致或不可预测。"),
-            ("SART_7", 
-             "I had to concentrate intensely to stay focused during the entire object search process.", 
-             "我必须全程高度集中注意力，才能在整个构件查找过程中保持专注。"),
-            ("SART_8", 
-             "I still had enough mental resources left to process other environmental information during the task.", 
-             "我还有足够的精力来注意其他环境信息。"),
-            ("SART_9", 
-             "I had to exert a lot of effort to understand the system's instructions and locate the correct component.", 
-             "我必须付出很大努力才能理解系统提示并找到正确的构件。"),
-            ("SART_10", 
-             "I remained alert and attentive throughout the tasks.", 
-             "我在任务中始终保持专注与警觉。")
-        ]
-        sart = {k: question_block(k, en, zh) for k, en, zh in sart_questions}
+            """)
+
+            sart = {}
+            sart_questions = [
+                ("SART_1", 
+                "I received enough information to help me quickly identify the target component.", 
+                "我获得了足够的信息来帮助我快速查找到目标构件。"),
+                ("SART_2", 
+                "The information provided by the system was clear and accurate.", 
+                "系统提供的信息清晰、准确，有助于我识别正确的构件。"),
+                ("SART_3", 
+                "I clearly understood what was happening during the component search tasks.", 
+                "我能清楚理解查找任务中的提示与状态信息。"),
+                ("SART_4", 
+                "The task environment and recognition process were complex.", 
+                "任务环境和识别过程较为复杂。"),
+                ("SART_5", 
+                "The task environment and information changed unexpectedly or frequently during the task.", 
+                "任务环境和出现的信息变化频繁或难以预料。"),
+                ("SART_6", 
+                "The system behavior or visual information was inconsistent or unpredictable during the task.", 
+                "任务中系统行为或视觉提示不一致或不可预测。"),
+                ("SART_7", 
+                "I had to concentrate intensely to stay focused during the entire object search process.", 
+                "我必须全程高度集中注意力，才能在整个构件查找过程中保持专注。"),
+                ("SART_8", 
+                "I still had enough mental resources left to process other environmental information during the task.", 
+                "我还有足够的精力来注意其他环境信息。"),
+                ("SART_9", 
+                "I had to exert a lot of effort to understand the system's instructions and locate the correct component.", 
+                "我必须付出很大努力才能理解系统提示并找到正确的构件。"),
+                ("SART_10", 
+                "I remained alert and attentive throughout the tasks.", 
+                "我在任务中始终保持专注与警觉。")
+            ]
+
+            for k, en, zh in sart_questions:
+                sart[k] = question_block(k, en, zh)
         
-        # System Usability 问卷
-        st.markdown("### 💻 System Usability & Experience")
-        st.markdown(f"""
-        **System being evaluated: `{system}`**
+        with st.expander("💻 System Usability & Experience", expanded=False):
+                
+            # System Usability 问卷
+            st.markdown("### 💻 System Usability & Experience")
+            st.markdown(f"""
+            **System being evaluated: `{system}`**
 
-        Please evaluate this system (the one you just used in the last round of tasks) based on your experience in completing the component search tasks.  
-        Use a 7-point scale: 1 = Strongly disagree, 7 = Strongly agree.
+            Please evaluate this system (the one you just used in the last round of tasks) based on your experience in completing the component search tasks.  
+            Use a 7-point scale: 1 = Strongly disagree, 7 = Strongly agree.
 
-        请根据您刚刚完成的构件查找任务，评价“该系统”（当前轮次所使用的系统）的表现。  
-        每个问题请根据您的实际体验程度，选择 1 到 7 分（1 = 非常不同意，7 = 非常同意）。
-        
-        """)
+            请根据您刚刚完成的构件查找任务，评价“该系统”（当前轮次所使用的系统）的表现。  
+            每个问题请根据您的实际体验程度，选择 1 到 7 分（1 = 非常不同意，7 = 非常同意）。
+            
+            """)
 
-        su_questions = [
-            ("SU_1", 
-             "This system provided information that was highly relevant to my task.", 
-             "该系统提供的信息与我当前的任务高度相关。"),
-            ("SU_2", 
-             "This system's prompts effectively guided me to the correct target.", 
-             "该系统的提示成功引导我找到正确目标。"),
-            ("SU_3", 
-             "This system's visual prompts were excessive or distracting.", 
-             "该系统的提示信息过多或让我感到分心。"),
-            ("SU_4", 
-             "The prompts were stable and consistent throughout this system.", 
-             "该系统的提示表现稳定、一致，没有跳动或不连贯。"),
-            ("SU_5", 
-             "I trusted this system's information to be reliable and accurate.", 
-             "我信任该系统提供的信息是可靠且准确的。"),
-            ("SU_6", 
-             "The system provided guidance at appropriate timing.", 
-             "该系统在恰当的时间点提供了提示，有助于我及时完成任务。"),
-            ("SU_7", 
-             "The system's interface was visually clean and well-organized.", 
-             "该系统界面整洁、信息排布合理，不混乱。"),
-            ("SU_8", 
-             "Overall, I am satisfied with using this system.", 
-             "总体而言，我对该系统的使用体验感到满意。")
-        ]
-        su = {k: question_block(k, en, zh) for k, en, zh in su_questions}
-        
-        # NASA-TLX 问卷
-        st.markdown("### ⚙️ NASA-TLX - Task Load Index")
-        
-        st.markdown(f"""
-        **System being evaluated: `{system}`**
+            su = {}
+            su_questions = [
+                ("SU_1", 
+                "This system provided information that was highly relevant to my task.", 
+                "该系统提供的信息与我当前的任务高度相关。"),
+                ("SU_2", 
+                "This system's prompts effectively guided me to the correct target.", 
+                "该系统的提示成功引导我找到正确目标。"),
+                ("SU_3", 
+                "This system's visual prompts were excessive or distracting.", 
+                "该系统的提示信息过多或让我感到分心。"),
+                ("SU_4", 
+                "The prompts were stable and consistent throughout this system.", 
+                "该系统的提示表现稳定、一致，没有跳动或不连贯。"),
+                ("SU_5", 
+                "I trusted this system's information to be reliable and accurate.", 
+                "我信任该系统提供的信息是可靠且准确的。"),
+                ("SU_6", 
+                "The system provided guidance at appropriate timing.", 
+                "该系统在恰当的时间点提供了提示，有助于我及时完成任务。"),
+                ("SU_7", 
+                "The system's interface was visually clean and well-organized.", 
+                "该系统界面整洁、信息排布合理，不混乱。"),
+                ("SU_8", 
+                "Overall, I am satisfied with using this system.", 
+                "总体而言，我对该系统的使用体验感到满意。")
+            ]
+            for k, en, zh in su_questions:
+                su[k] = question_block(k, en, zh)
 
-        Please evaluate this system (the one you just used in the last round of tasks) based on your experience in completing the component search tasks.  
-        Use a 7-point scale: 1 = Strongly disagree, 7 = Strongly agree.
 
-        请根据您刚刚完成的构件查找任务，评价“该系统”（当前轮次所使用的系统）的表现。  
-        每个问题请根据您的实际体验程度，选择 1 到 7 分（1 = 非常不同意，7 = 非常同意）。
-        
-        """)
+        with st.expander("⚙️ NASA-TLX – Task Load Index", expanded=False):
+            # NASA-TLX 问卷
+            st.markdown("### ⚙️ NASA-TLX - Task Load Index")
 
-        tlx_questions = [
-            ("TLX_1", 
-             "How mentally demanding was the task?", 
-             "这个任务在心理/思维上对你有多大挑战？"),
-            ("TLX_2", 
-             "How physically demanding was the task?", 
-             "这个任务在体力上对你有多大挑战？"),
-            ("TLX_3", 
-             "How hurried or rushed was the pace of the task?", 
-             "这个任务的节奏是否让你感觉匆忙或赶时间？"),
-            ("TLX_4", 
-             "How successful were you in accomplishing what you were asked to do?", 
-             "你认为自己完成任务的成功程度如何？"),
-            ("TLX_5", 
-             "How hard did you have to work to accomplish your level of performance?", 
-             "为了达到目前的任务表现，你付出了多大努力？"),
-            ("TLX_6", 
-             "How insecure, discouraged, irritated, stressed, and annoyed were you?", 
-             "你在任务中感到多少不安、沮丧、焦虑、烦躁？")
-        ]
-        tlx = {k: question_block(k, en, zh) for k, en, zh in tlx_questions}
+            st.markdown(f"""
+            **System being evaluated: `{system}`**
+
+            Please evaluate this system (the one you just used in the last round of tasks) based on your experience in completing the component search tasks.  
+            Use a 7-point scale: 1 = Strongly disagree, 7 = Strongly agree.
+
+            请根据您刚刚完成的构件查找任务，评价“该系统”（当前轮次所使用的系统）的表现。  
+            每个问题请根据您的实际体验程度，选择 1 到 7 分（1 = 非常不同意，7 = 非常同意）。
+            
+            """)
+            tlx = {}
+            
+            tlx_questions = [
+                ("TLX_1", 
+                "How mentally demanding was the task?", 
+                "这个任务在心理/思维上对你有多大挑战？"),
+                ("TLX_2", 
+                "How physically demanding was the task?", 
+                "这个任务在体力上对你有多大挑战？"),
+                ("TLX_3", 
+                "How hurried or rushed was the pace of the task?", 
+                "这个任务的节奏是否让你感觉匆忙或赶时间？"),
+                ("TLX_4", 
+                "How successful were you in accomplishing what you were asked to do?", 
+                "你认为自己完成任务的成功程度如何？"),
+                ("TLX_5", 
+                "How hard did you have to work to accomplish your level of performance?", 
+                "为了达到目前的任务表现，你付出了多大努力？"),
+                ("TLX_6", 
+                "How insecure, discouraged, irritated, stressed, and annoyed were you?", 
+                "你在任务中感到多少不安、沮丧、焦虑、烦躁？")
+            ]
+            for k, en, zh in tlx_questions:
+                tlx[k] = question_block(k, en, zh)
         
         col1, col2 = st.columns([1, 1])
         back = col1.form_submit_button("⬅️ 返回上一步")
