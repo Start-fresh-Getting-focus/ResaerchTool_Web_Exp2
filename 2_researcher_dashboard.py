@@ -139,7 +139,7 @@ def record_step():
             
             # 检查答案是否正确
             answer_list = [s.strip() for s in answer.split() if s.strip()]
-            is_correct = any(ans in target_ids for ans in answer_list)
+            is_correct = set(target_ids).issubset(set(answer_list))
             
             # 记录尝试
             attempt = {
